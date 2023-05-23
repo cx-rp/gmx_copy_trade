@@ -143,7 +143,6 @@ const repeatTransactions = async (action, users) => {
             // Check the same collateral and index noken as trader did (can mismatch with path)
             let userPositions = await getPositions(user, [collateralToken], [indexToken], [isLong]);
             const traderPositions = await getPositions(trader, [collateralToken], [indexToken], [isLong]);
-            userPositions = 26849207140720055844060000000000n;
             if (userPositions > 0n) {
                 const adjusted = (traderPositions + sizeDelta) / userPositions;
 
