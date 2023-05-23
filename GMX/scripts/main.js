@@ -1,4 +1,4 @@
-require('dotenv');
+require('dotenv').config();
 const Web3 = require("web3");
 const axios = require("axios");
 const UserAccountAbi = require("../interfaces/UserAccountABI.json");
@@ -8,10 +8,10 @@ const HttpProviderArbitrum = "https://arb1.arbitrum.io/rpc";
 const HttpProviderAvalanche = "https://api.avax.network/ext/bc/C/rpc";
 const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
 
-const OWNER = "0x151A2048D7aB24dC889d083f38B7F250B7691CCB";
-const ARB_API_KEY = "XT4GTWMD4Y9YI9ISXQSFH2J697IMRHW253";
-const AVAX_API_KEY = "55F6IGN7Q2FF9QVIYATYRZMCGEDDIEEPK7";
-const METAMASK_PRIVATE_KEY = "";
+const OWNER = process.env.OWNER;
+const ARB_API_KEY = process.env.ARB_API_KEY;
+const AVAX_API_KEY = process.env.AVAX_API_KEY;
+const METAMASK_PRIVATE_KEY = process.env.METAMASK_PRIVATE_KEY;
 
 // Avalanche 
 const USDT = "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7";
