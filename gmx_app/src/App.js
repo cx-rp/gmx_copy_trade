@@ -1,5 +1,6 @@
 import './styles/App.css';
 import { Wallet } from "./components/Wallet";
+import { Home } from "./components/Home";
 import '@rainbow-me/rainbowkit/styles.css';
 import {
   getDefaultWallets,
@@ -11,7 +12,7 @@ import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { jsonRpcProvider } from 'wagmi/providers/jsonRpc';
 
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-
+import { useState, useContext, createContext } from "react";
 
 const avalancheChain = {
   id: 43_114,
@@ -58,16 +59,21 @@ const wagmiConfig = createConfig({
   publicClient
 })
 
+export const WalletContext = createContext();
 
 function App() {
   const { address, isConnected } = useAccount();
-  console.log(address)
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider chains={chains}>
-        <Wallet/>
-      </RainbowKitProvider>
-    </WagmiConfig>
+    <WalletContext.Provider value={address}>
+      <WagmiConfig config={wagmiConfig}>
+        <RainbowKitProvider chains={chains}>
+          <div className='connect'>
+            <Wallet/>
+          </div>
+          <Home/>
+        </RainbowKitProvider>
+      </WagmiConfig>
+    </WalletContext.Provider>
   )
 }
 

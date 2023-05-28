@@ -9,6 +9,9 @@
     "hardhat": "^2.9.6"
   },
   "dependencies": {
-    "axios": "^1.4.0"
+    "axios": "^1.4.0",
+    "bignumber": "^1.1.0",
+    "uid": "^2.0.2",
+    "web3": "^1.10.0"
   }
 }
