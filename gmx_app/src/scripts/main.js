@@ -1,24 +1,12 @@
 // import dotenv from "dotenv";
 import Web3 from "web3";
 import axios from "axios";
-// import * as UserAccountAbi from "../interfaces/UserAccountABI.json"; // assert { type: "json" };
-// import * as ERC20ABI from "../interfaces/IERC20.json"; // assert { type: "json" };
-import * as readerAbi from "../interfaces/Reader.json";
-import * as routerAbi from "../interfaces/Router.json";
 import funcs from "./dataBase";
 
 import RouterAbi from "../interfaces/RouterAbi";
 import ReaderAbi from "../interfaces/ReaderAbi";
 import ERC20ABI from "../interfaces/IERC20.js";
 import UserAccountAbi from "../interfaces/UserAccountAbi";
-
-/*
-const Web3 = require("web3");
-const axios = require("axios");
-const UserAccountAbi = require("../interfaces/UserAccountABI.json");
-const ERC20ABI = require("../interfaces/IERC20.json");
-const ReaderAbi = require("../interfaces/Reader.json");
-*/
 
 const HttpProviderArbitrum = "https://arb1.arbitrum.io/rpc";
 const HttpProviderAvalanche = "https://api.avax.network/ext/bc/C/rpc";
@@ -27,7 +15,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
 const OWNER = process.env.OWNER;
 // const ARB_API_KEY = process.env.ARB_API_KEY;
 const AVAX_API_KEY = process.env.AVAX_API_KEY;
-console.log(AVAX_API_KEY)
+const METAMASK_PRIVATE_KEY = process.env.METAMASK_PRIVATE_KEY;
 
 
 // Avalanche 
@@ -85,7 +73,6 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
         'gasPrice': gasPrice,
         'data': data
     }
-    // console.log(data);
     /*
     const signTrx = await web3.eth.accounts.signTransaction(transaction, METAMASK_PRIVATE_KEY);
     await web3.eth.sendSignedTransaction(signTrx.rawTransaction, (error, hash) => {
