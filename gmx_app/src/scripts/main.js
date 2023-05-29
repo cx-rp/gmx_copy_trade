@@ -222,30 +222,6 @@ const init = async () => {
     const actions = response.data;
     return actions[0];
 }
-/*
-const increase = {
-    data: {
-        action: "CreateIncreasePosition",
-        account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-        txhash: "0xb81aaf4de4a33b4ac1a03307051860a1b5946e04d8adcfc594a52ae4bc193558"
-    }
-}
-
-const decrease = {
-    data: {
-        action: "CreateDecreasePosition",
-        account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-        txhash: "0x62bd19760cf8b09620aae6edca94b902890dd53bf13d9c21bcc8871d379d3276"
-    }
-}
-
-const func = async () => {
-    await init();
-    await exploreNewActions([decrease]);
-}
-
-func();
-*/
 
 const getBalance = async (user, tokenAddress) => {
     const token = await new web3.eth.Contract(ERC20ABI, tokenAddress);
@@ -274,15 +250,13 @@ const getTrackingUsers = async (trader) => {
     return users[0];
 }
 
-// Change to parce from webSockets 
-
 const exploreNewActions = async (actions) => {
     actions.map(async (action) => {
         if (trackedActions.includes(action.data.action)) {
             console.log("Account: ", action.data.account);
             let users = await getTrackingUsers(action.data.account);
             console.log("Users: ", users);
-            // if (users.length > 0) await repeatTransactions(action, users);
+            if (users.length > 0) await repeatTransactions(action, users);
         }
     })
 }
