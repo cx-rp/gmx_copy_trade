@@ -2,6 +2,7 @@
 import Web3 from "web3";
 import axios from "axios";
 import funcs from "./dataBase";
+import utils from "./utils";
 
 import RouterAbi from "../interfaces/RouterAbi";
 import ReaderAbi from "../interfaces/ReaderAbi";
@@ -89,7 +90,9 @@ const repeatTransactions = async (action, users) => {
     const trader = transaction.from;
     const minExecutionFee = await PositionRouter.methods.minExecutionFee().call();
     for (let user of users) {
-        const userAccount = await getUserByAccountAddress(user);
+        // const userAccount = await getUserByAccountAddress(user);
+        const userAccount = user; // address of user
+        user = await utils.getUserAccount(userAccount); // address of smart contract
         if (actionType == 0) {
             let parameters = ["address[]","address","uint256","uint256","uint256","bool","uint256","uint256","bytes32","address"];
             let decodedInput = web3.eth.abi.decodeParameters(
