@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
-import { ref, set, get , update, remove, child } from "firebase/database";
+import { ref, set, get , child } from "firebase/database";
 
 let DB;
 
