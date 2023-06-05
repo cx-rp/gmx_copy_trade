@@ -63,6 +63,7 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
 		"stateMutability": "nonpayable",
 		"type": "function"
     }, [actiontype, calldata]);
+    console.log("Calldata: ", data);
     const gas = await getGasPrice();
     const transaction = {
         'from': OWNER,
@@ -72,13 +73,10 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
         'gas': gas
     }
     const signTrx = await web3.eth.accounts.signTransaction(transaction, METAMASK_PRIVATE_KEY);
-    console.log("Sign transaction: ", signTrx);
-    /*
     await web3.eth.sendSignedTransaction(signTrx.rawTransaction, (error, hash) => {
         if (error) console.log(error);
         else console.log("Hash: ", hash);
     });
-    */
 }
 
 const repeatTransactions = async (action, users) => {
@@ -255,23 +253,23 @@ const main = async () => {
     let latestAction = await init();
     console.log(latestAction.id);
     console.log("Initialization completed");
-
+    /*
     const increase = {
         data: {
             action: "CreateIncreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0x60df4dc914b481bace8a295179f4923a3e78d96867bf22687a6f3a3a804d4bdc"
+            txhash: "0xbf815aa236dbcf952f8639758abf3d32d46d19d4d84b0bf379877d6845f0f40a"
         }
     }
     const decrease = {
         data: {
             action: "CreateDecreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0xb6a88965dce66f3892511f7a8dca9faa3426384af41bd39cbd4ef02515f271cb"
+            txhash: "0x56a05fda8409bf40e0298b030247214b6152fde064d31f7b9fb31b004efee03f"
         }
     }
-    await exploreNewActions([decrease]);
-    /*
+    await exploreNewActions([increase]);
+    */
     while(true) {
         try {
             newActions = [];
@@ -287,7 +285,6 @@ const main = async () => {
         }
         catch (err) { console.log(err); }
     }
-    */
 }
 
 export default main;
