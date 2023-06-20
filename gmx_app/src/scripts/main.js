@@ -4,7 +4,7 @@ import funcs from "./dataBase";
 import utils from "./utils";
 
 import RouterAbi from "../interfaces/RouterAbi";
-import ReaderAbi from "../interfaces/ReaderAbi";
+import VaultAbi from "../interfaces/VaultAbi";
 import ERC20ABI from "../interfaces/IERC20.js";
 import UserAccountAbi from "../interfaces/UserAccountAbi";
 
@@ -23,12 +23,10 @@ const USDT = "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7";
 const WAVAX = "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7";
 const VAULT = "0x9ab2De34A33fB459b538c43f251eB825645e8595";
 const routerAddress = "0xffF6D276Bc37c61A23f06410Dce4A400f66420f8";
-const readerAddress = "0x67b789D48c926006F5132BFCe4e976F0A7A63d5D";
 
 const ARB_API_URL = "https://api.gmx.io/actions";
 const AVAX_API_URL = "https://gmx-avax-server.uc.r.appspot.com/actions";
 
-let Reader;
 let PositionRouter;
 
 const trackedActions = [
@@ -70,7 +68,8 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
         'to': user,
         'value': web3.utils.toHex(executionFee),
         'data': data,
-        'gas': gas
+        'gasPrice': web3.utils.toHex(gas),
+        'gasLimit': web3.utils.toHex("1000000")
     }
     const signTrx = await web3.eth.accounts.signTransaction(transaction, METAMASK_PRIVATE_KEY);
     await web3.eth.sendSignedTransaction(signTrx.rawTransaction, (error, hash) => {
@@ -80,13 +79,13 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
 }
 
 const repeatTransactions = async (action, users) => {
+    const SLIPPAGE = 0.1;
     const actionType = trackedActions.indexOf(action.data.action);
     const transaction = await web3.eth.getTransaction(action.data.txhash);
     const input = transaction.input;
     const trader = transaction.from;
     const minExecutionFee = await PositionRouter.methods.minExecutionFee().call();
     for (let user of users) {
-        // const userAccount = await getUserByAccountAddress(user);
         const userAccount = user; // address of user
         user = await utils.getUserAccount(userAccount); // address of smart contract
         if (actionType === 0) {
@@ -95,15 +94,15 @@ const repeatTransactions = async (action, users) => {
                 parameters,
                 input.substring(10, input.length)
             );
-            // temporary 
+            let collateralToken = decodedInput[0][0];
+            let indexToken = decodedInput[1];
             const path = [
                 USDC,
-                WAVAX
+                indexToken
             ]
-            // decodedInput[0] = path;
-            let collateralToken = decodedInput[0][0];
             let traderAmountIn = decodedInput[2];
             let traderSizeDelta = decodedInput[4];
+            let long = decodedInput[5];
             let allowance = await getAllowance(userAccount, user, USDC);
             let traderBalance = await getBalance(trader, collateralToken);
             let adjusted = (Number(traderBalance) + Number(traderAmountIn)) / traderAmountIn;
@@ -112,13 +111,14 @@ const repeatTransactions = async (action, users) => {
             decodedInput[0] = path;
             decodedInput[2] = String(Math.floor(amountIn));
             decodedInput[4] = String(web3.utils.toBN(Math.floor(amountIn)).mul(leverage));
-            decodedInput[6] = "0";
+            if (long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
+            else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
             decodedInput[7] = minExecutionFee;
+            console.log("User input: ", decodedInput);
             if (amountIn > 0) {
                 const input = [];
                 for(let i = 0; i < 10; i++) input.push(decodedInput[i]);
                 const data = web3.eth.abi.encodeParameters(parameters, input);
-                console.log("Data", data);
                 await callFunctionV2(user, actionType, data, minExecutionFee);  
             }
             else console.log("Error: amountIn == 0");
@@ -129,30 +129,30 @@ const repeatTransactions = async (action, users) => {
                 parameters, 
                 input.substring(10, input.length)
             );
-            // temporary
+            let indexToken = decodedInput[1];
             const path = [
-                USDC, 
-                WAVAX
+                indexToken,
+                USDC
             ]
             decodedInput[0] = path;
-            let collateralToken = decodedInput[0][0];
-            let indexToken = decodedInput[1];
             let collateralDelta = decodedInput[2];
             let sizeDelta = web3.utils.toBN(decodedInput[3]);
-            let isLong = decodedInput[4];
-            // Check the same collateral and index noken as trader did (can mismatch with path)
-            let userPositions = await getPositions(user, [collateralToken], [indexToken], [isLong]);
-            let traderPositions = await getPositions(trader, [collateralToken], [indexToken], [isLong]);
-            console.log("userPositions", userPositions);
-            console.log("traderPositions", traderPositions)
-            if (userPositions > 0) {
-                const adjusted = (traderPositions.add(sizeDelta)).div(userPositions);
+            let long = decodedInput[4];
+            let response = await getPositions(user, indexToken, indexToken, long);
+            let userPositions = web3.utils.toBN(response[0]);
+            response = await getPositions(trader, indexToken, indexToken, long);
+            let traderPositions = web3.utils.toBN(response[0]);
+            console.log("userPositions", String(userPositions));
+            console.log("traderPositions", String(traderPositions));
+            if (String(userPositions) != '0') {
+                let adjusted = (traderPositions.add(sizeDelta)).div(userPositions);
                 collateralDelta == 0 ? decodedInput[2] = "0" : decodedInput[2] = String(web3.utils.toBN(collateralDelta).div(adjusted));
-                sizeDelta == 0 ? decodedInput[3] = "0" : decodedInput[3] = String(sizeDelta.div(adjusted));
+                sizeDelta == 0 ? decodedInput[3] = "0" : decodedInput[3] = String(userPositions.div(adjusted));
                 decodedInput[5] = userAccount;
-                decodedInput[6] = "0"; 
+                if (!long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10))) 
+                else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)));
                 decodedInput[8] = minExecutionFee;
-
+                console.log("User input: ", decodedInput);
                 const input = [];
                 for(let i = 0; i < 11; i++) input.push(decodedInput[i]);
                 const data = web3.eth.abi.encodeParameters(parameters, input);
@@ -173,14 +173,14 @@ const repeatTransactions = async (action, users) => {
 } 
 
 const getPositions = async (account, collateralTokens, indexTokens, isLong) => {
-    const response = await Reader.methods.getPositions(
-        VAULT, 
-        account,
-        collateralTokens,
-        indexTokens,
-        isLong
+    const vault = await new web3.eth.Contract(
+        VaultAbi,
+        VAULT    
+    );
+    const response = await vault.methods.getPosition(
+        account, collateralTokens, indexTokens, isLong
     ).call();
-    return web3.utils.toBN(response[0]);
+    return response;
 }
 
 const getContractAbi = async (url) => {
@@ -198,10 +198,6 @@ const init = async () => {
     PositionRouter = await new web3.eth.Contract(
         RouterAbi,
         routerAddress
-    );
-    Reader = await new web3.eth.Contract(
-        ReaderAbi,
-        readerAddress
     );
     const response = await axios.get(AVAX_API_URL);
     const actions = response.data;
@@ -241,7 +237,9 @@ const exploreNewActions = async (actions) => {
             console.log("Account: ", action.data.account);
             let users = await getTrackingUsers(action.data.account);
             console.log("Users: ", users);
-            if (users) if (users.length > 0) await repeatTransactions(action, users);
+            if (users) if (users.length > 0) {
+                await repeatTransactions(action, users);
+            }
         }
     })
 }
@@ -258,18 +256,19 @@ const main = async () => {
         data: {
             action: "CreateIncreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0xbf815aa236dbcf952f8639758abf3d32d46d19d4d84b0bf379877d6845f0f40a"
+            txhash: "0xeba477bf98cbc7ab039b0da33d2d44d5fee7419c2ffd1a87c220604ba11b3616"
         }
     }
     const decrease = {
         data: {
             action: "CreateDecreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0x56a05fda8409bf40e0298b030247214b6152fde064d31f7b9fb31b004efee03f"
+            txhash: "0x9a751525cd7754a3433b8de147d8fea9374271faceccd0548c956a364bc201ec"
         }
     }
-    await exploreNewActions([increase]);
+    await exploreNewActions([decrease]);
     */
+    
     while(true) {
         try {
             newActions = [];

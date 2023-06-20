@@ -33,7 +33,7 @@ const getUsersByTrader = async (trader) => {
     } 
     else {
         console.log("No data available");
-        return [];
+        return [[]];
     }
 }
 
@@ -43,15 +43,15 @@ const addTrackedTraders = async (user, traders) => {
         console.log("Users", users);
         if (users.length > 0) {
             if (users[0].includes(user)) {
-                console.log(`Trader ${trader} already tracked by user ${user}`);
+                alert(`Trader ${trader} already tracked by user ${user}`);
             }
             else {
                 let _users = users[0];
                 _users.push(user);
-                console.log("New users: ", users[0]);
                 set(ref(DB, "traders/" + trader), {
                     _users
                 });
+                alert(`New users: ${users[0]}`);
             }
         }
         else {    
@@ -61,6 +61,7 @@ const addTrackedTraders = async (user, traders) => {
             set(ref(DB, "traders/" + trader), {
                 _users
             });
+            alert(`New trader: ${trader}`);
         }
     }
 }
@@ -71,11 +72,11 @@ const deleteTrackedTraders = async (user, traders) => {
         if (users[0].includes(user)) {
             const index = users[0].indexOf(user);
             if (index > -1) users[0].splice(index, 1);
-            console.log("New Users: ", users[0]);
             let _users = users[0];
             set(ref(DB, "traders/" + trader), {
                 _users
             });
+            alert(`Deleted trader: ${trader}`);
         }
         else console.log("Trader not tracked");
     }

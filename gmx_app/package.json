@@ -1,4 +1,6 @@
 {
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build",
   "name": "gmx_app",
   "version": "0.1.0",
   "private": true,
@@ -49,6 +51,7 @@
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.9",
     "assert": "^2.0.0",
+    "gh-pages": "^5.0.0",
     "react-app-rewired": "^2.2.1",
     "react-scripts": "^5.0.1",
     "stream": "^0.0.2"

@@ -49,6 +49,9 @@ export const Home = () => {
                     Create User Account
                 </button> : null
             }
+            <div>
+                <button onClick={() => utils.withdraw(address)}>Withdraw USDC</button>
+            </div>
             <div className="input">
                 <input
                     type="text"

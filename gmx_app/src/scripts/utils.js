@@ -85,4 +85,32 @@ const approve = async (user, token, amount) => {
     else alert("You don't have an account or amount to approve is zero");
 }
 
-export default { createUserAccount, getUserAccount, approve };
+const withdraw = async (user) => {
+    const userAccount = await getUserAccount(user);
+    const USDC = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
+    const calldata = await web3.eth.abi.encodeFunctionCall({
+        "inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenAddress",
+				"type": "address"
+			}
+		],
+		"name": "withdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+    }, [USDC]);
+    const transaction = {
+        'from': user,
+        'to': userAccount,
+        'value': "0x00",
+        'data': calldata
+    }
+    await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [transaction],
+    }).then((result) => {console.log(result)}).catch((error) => {console.log(error)});
+}
+
+export default { createUserAccount, getUserAccount, approve, withdraw };
