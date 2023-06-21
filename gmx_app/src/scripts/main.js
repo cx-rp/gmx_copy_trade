@@ -96,10 +96,12 @@ const repeatTransactions = async (action, users) => {
             );
             let collateralToken = decodedInput[0][0];
             let indexToken = decodedInput[1];
+            /*
             const path = [
                 USDC,
                 indexToken
             ]
+            */
             let traderAmountIn = decodedInput[2];
             let traderSizeDelta = decodedInput[4];
             let long = decodedInput[5];
@@ -108,7 +110,7 @@ const repeatTransactions = async (action, users) => {
             let adjusted = (Number(traderBalance) + Number(traderAmountIn)) / traderAmountIn;
             let amountIn = allowance / adjusted;
             let leverage = web3.utils.toBN(traderSizeDelta).div(web3.utils.toBN(traderAmountIn));
-            decodedInput[0] = path;
+            // decodedInput[0] = path;
             decodedInput[2] = String(Math.floor(amountIn));
             decodedInput[4] = String(web3.utils.toBN(Math.floor(amountIn)).mul(leverage));
             if (long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
@@ -130,11 +132,13 @@ const repeatTransactions = async (action, users) => {
                 input.substring(10, input.length)
             );
             let indexToken = decodedInput[1];
+            /*
             const path = [
                 indexToken,
                 USDC
             ]
             decodedInput[0] = path;
+            */
             let collateralDelta = decodedInput[2];
             let sizeDelta = web3.utils.toBN(decodedInput[3]);
             let long = decodedInput[4];

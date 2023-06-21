@@ -1,6 +1,4 @@
 {
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d build",
   "name": "gmx_app",
   "version": "0.1.0",
   "private": true,
