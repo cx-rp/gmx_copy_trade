@@ -13,8 +13,6 @@ const HttpProviderAvalanche = "https://api.avax.network/ext/bc/C/rpc";
 const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
 
 const OWNER = process.env.REACT_APP_OWNER;
-// const ARB_API_KEY = process.env.ARB_API_KEY;
-// const AVAX_API_KEY = process.env.REACT_APP_AVAX_API_KEY;
 const METAMASK_PRIVATE_KEY = process.env.REACT_APP_METAMASK_PRIVATE_KEY;
 
 // Avalanche 
@@ -95,13 +93,6 @@ const repeatTransactions = async (action, users) => {
                 input.substring(10, input.length)
             );
             let collateralToken = decodedInput[0][0];
-            let indexToken = decodedInput[1];
-            /*
-            const path = [
-                USDC,
-                indexToken
-            ]
-            */
             let traderAmountIn = decodedInput[2];
             let traderSizeDelta = decodedInput[4];
             let long = decodedInput[5];
@@ -110,7 +101,6 @@ const repeatTransactions = async (action, users) => {
             let adjusted = (Number(traderBalance) + Number(traderAmountIn)) / traderAmountIn;
             let amountIn = allowance / adjusted;
             let leverage = web3.utils.toBN(traderSizeDelta).div(web3.utils.toBN(traderAmountIn));
-            // decodedInput[0] = path;
             decodedInput[2] = String(Math.floor(amountIn));
             decodedInput[4] = String(web3.utils.toBN(Math.floor(amountIn)).mul(leverage));
             if (long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
@@ -132,26 +122,16 @@ const repeatTransactions = async (action, users) => {
                 input.substring(10, input.length)
             );
             let indexToken = decodedInput[1];
-            /*
-            const path = [
-                indexToken,
-                USDC
-            ]
-            decodedInput[0] = path;
-            */
-            let collateralDelta = decodedInput[2];
             let sizeDelta = web3.utils.toBN(decodedInput[3]);
             let long = decodedInput[4];
             let response = await getPositions(user, indexToken, indexToken, long);
             let userPositions = web3.utils.toBN(response[0]);
             response = await getPositions(trader, indexToken, indexToken, long);
             let traderPositions = web3.utils.toBN(response[0]);
-            console.log("userPositions", String(userPositions));
-            console.log("traderPositions", String(traderPositions));
-            if (String(userPositions) != '0') {
-                let adjusted = (traderPositions.add(sizeDelta)).div(userPositions);
-                collateralDelta == 0 ? decodedInput[2] = "0" : decodedInput[2] = String(web3.utils.toBN(collateralDelta).div(adjusted));
-                sizeDelta == 0 ? decodedInput[3] = "0" : decodedInput[3] = String(userPositions.div(adjusted));
+            if (String(userPositions) != String('0')) {
+                let adjusted = (traderPositions.add(sizeDelta)).div(sizeDelta);
+                console.log(String(adjusted))
+                decodedInput[3] = String(userPositions.div(adjusted));
                 decodedInput[5] = userAccount;
                 if (!long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10))) 
                 else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)));
@@ -194,11 +174,6 @@ const getContractAbi = async (url) => {
 }
 
 const init = async () => {
-    // const ARB_URL = `https://api.arbiscan.io/api?module=contract&action=getabi&address=${ARB_USDT}&apikey=${ARB_API_KEY}`;
-    // const AVAX_URL = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${USDT}&apikey=${AVAX_API_KEY}`;
-    // const routerAbi = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${routerAddress}&apikey=${AVAX_API_KEY}`;
-    // const readerAbi = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${readerAddress}&apikey=${AVAX_API_KEY}`;
-    // ERC20ABI = await getContractAbi(AVAX_URL)
     PositionRouter = await new web3.eth.Contract(
         RouterAbi,
         routerAddress
@@ -260,19 +235,19 @@ const main = async () => {
         data: {
             action: "CreateIncreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0xeba477bf98cbc7ab039b0da33d2d44d5fee7419c2ffd1a87c220604ba11b3616"
+            txhash: "0xf51c6dfa10b4abc98c071ff253a9d7795adaf7f73f452be879580647ee666d79"
         }
     }
     const decrease = {
         data: {
             action: "CreateDecreasePosition",
             account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-            txhash: "0x9a751525cd7754a3433b8de147d8fea9374271faceccd0548c956a364bc201ec"
+            txhash: "0x1870c8b92449827e9d7e69f0a1f6fff98b11d5d64187b751ca5404291a423efd"
         }
     }
     await exploreNewActions([decrease]);
     */
-    
+
     while(true) {
         try {
             newActions = [];
