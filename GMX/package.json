@@ -1,6 +1,8 @@
 {
+  "type": "module",
   "name": "hardhat-project",
   "dependencies": {
+    "firebase": "^9.23.0",
     "sqlite3": "^5.1.6"
   }
 }

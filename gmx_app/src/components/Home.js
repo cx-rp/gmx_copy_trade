@@ -2,7 +2,6 @@ import { WalletContext } from "../App";
 import { useContext, useState, useEffect } from "react";
 import funcs from "../scripts/dataBase";
 import utils from "../scripts/utils";
-import main from "../scripts/main";
 
 
 export const Home = () => {
@@ -24,10 +23,6 @@ export const Home = () => {
         }
         userHasAccount();
     });
-    
-    useEffect(() => {
-        main();
-    }, []);
     
     const validateAddress = (action, traders) => {
         for(let trader of traders) {

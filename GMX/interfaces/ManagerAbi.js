@@ -1,14 +1,14 @@
-[
+const ManagerAbi = [
 	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_USER",
+				"name": "_GMX_ROUTER",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "_GMX_ROUTER",
+				"name": "_TRADER_JOE_ROUTER",
 				"type": "address"
 			},
 			{
@@ -19,58 +19,6 @@
 		],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "CANCEL_DECREASE_POSITION",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "CANCEL_INCREASE_POSITION",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "CREATE_DECREASE_POSITION",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "CREATE_INCREASE_POSITION",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
 	},
 	{
 		"inputs": [],
@@ -100,7 +48,20 @@
 	},
 	{
 		"inputs": [],
-		"name": "MANAGER",
+		"name": "INCREASE_POSIOTION_FEE",
+		"outputs": [
+			{
+				"internalType": "uint24",
+				"name": "",
+				"type": "uint24"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "OWNER",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -113,7 +74,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "USER",
+		"name": "TRADER_JOE_ROUTER",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -127,38 +88,78 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint8",
-				"name": "action",
-				"type": "uint8"
-			},
-			{
-				"internalType": "bytes",
-				"name": "data",
-				"type": "bytes"
+				"internalType": "uint24",
+				"name": "newFee",
+				"type": "uint24"
 			}
 		],
-		"name": "executeAction",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "payable",
+		"name": "changeIncreasePositionFee",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "tokenAddress",
+				"name": "newOwner",
 				"type": "address"
 			}
 		],
-		"name": "withdraw",
+		"name": "changeOwner",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_indexToken",
+				"type": "address"
+			}
+		],
+		"name": "chargeFee",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "createNewUserAccount",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userAccounts",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"stateMutability": "payable",
+		"type": "receive"
 	}
 ]
+
+export default ManagerAbi;

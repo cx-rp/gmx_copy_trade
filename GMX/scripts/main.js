@@ -1,34 +1,30 @@
-require('dotenv').config();
-const Web3 = require("web3");
-const axios = require("axios");
-const UserAccountAbi = require("../interfaces/UserAccountABI.json");
-const ERC20ABI = require("../interfaces/IERC20.json");
+import Web3 from "web3";
+import axios from "axios";
+import funcs from "./dataBase.js";
+import utils from "./utils.js";
 
-const HttpProviderArbitrum = "https://arb1.arbitrum.io/rpc";
+import RouterAbi from "../interfaces/RouterAbi.js";
+import VaultAbi from "../interfaces/VaultAbi.js";
+import ERC20ABI from "../interfaces/IERC20.js";
+
+// const HttpProviderArbitrum = "https://arb1.arbitrum.io/rpc";
 const HttpProviderAvalanche = "https://api.avax.network/ext/bc/C/rpc";
 const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
 
-const OWNER = process.env.OWNER;
-const ARB_API_KEY = process.env.ARB_API_KEY;
-const AVAX_API_KEY = process.env.AVAX_API_KEY;
-const METAMASK_PRIVATE_KEY = process.env.METAMASK_PRIVATE_KEY;
+const OWNER = process.env.REACT_APP_OWNER;
+const METAMASK_PRIVATE_KEY = process.env.REACT_APP_METAMASK_PRIVATE_KEY;
 
 // Avalanche 
+const USDC = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
 const USDT = "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7";
 const WAVAX = "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7";
 const VAULT = "0x9ab2De34A33fB459b538c43f251eB825645e8595";
 const routerAddress = "0xffF6D276Bc37c61A23f06410Dce4A400f66420f8";
-const readerAddress = "0x67b789D48c926006F5132BFCe4e976F0A7A63d5D";
 
 const ARB_API_URL = "https://api.gmx.io/actions";
 const AVAX_API_URL = "https://gmx-avax-server.uc.r.appspot.com/actions";
 
-let Reader;
 let PositionRouter;
-
-let DataBase = {
-    "0x8d3646ccb2b0d55af97c837aab418c1b3e03fc2a": ["0x0642A19b633b620DA511B5D33bFfB46A7E51be0d"]
-};
 
 const trackedActions = [
     "CreateIncreasePosition",
@@ -62,59 +58,54 @@ const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
 		"stateMutability": "nonpayable",
 		"type": "function"
     }, [actiontype, calldata]);
-    const gasPrice = await getGasPrice();
+    console.log("Calldata: ", data);
+    const gas = await getGasPrice();
     const transaction = {
         'from': OWNER,
         'to': user,
         'value': web3.utils.toHex(executionFee),
-        'gasLimit': "0x0100000",
-        'gasPrice': gasPrice,
-        'data': data
+        'data': data,
+        'gasPrice': web3.utils.toHex(gas),
+        'gasLimit': web3.utils.toHex("1000000")
     }
-    // console.log(data);
-    /*
     const signTrx = await web3.eth.accounts.signTransaction(transaction, METAMASK_PRIVATE_KEY);
     await web3.eth.sendSignedTransaction(signTrx.rawTransaction, (error, hash) => {
         if (error) console.log(error);
         else console.log("Hash: ", hash);
-    })
-    */
+    });
 }
 
 const repeatTransactions = async (action, users) => {
+    const SLIPPAGE = 0.1;
     const actionType = trackedActions.indexOf(action.data.action);
     const transaction = await web3.eth.getTransaction(action.data.txhash);
     const input = transaction.input;
     const trader = transaction.from;
     const minExecutionFee = await PositionRouter.methods.minExecutionFee().call();
     for (let user of users) {
-        const userAccount = await getUserByAccountAddress(user);
-        if (actionType == 0) {
+        const userAccount = user; // address of user
+        user = await utils.getUserAccount(userAccount); // address of smart contract
+        if (actionType === 0) {
             let parameters = ["address[]","address","uint256","uint256","uint256","bool","uint256","uint256","bytes32","address"];
             let decodedInput = web3.eth.abi.decodeParameters(
                 parameters,
                 input.substring(10, input.length)
             );
-            // temporary 
-            const path = [
-                USDT,
-                WAVAX
-            ]
-            // decodedInput[0] = path;
             let collateralToken = decodedInput[0][0];
-            let traderAmountIn = BigInt(decodedInput[2]);
-            let traderSizeDelta = BigInt(decodedInput[4]);
-            let allowance = await getAllowance(userAccount, user, USDT);
+            let traderAmountIn = decodedInput[2];
+            let traderSizeDelta = decodedInput[4];
+            let long = decodedInput[5];
+            let allowance = await getAllowance(userAccount, user, USDC);
             let traderBalance = await getBalance(trader, collateralToken);
-            let adjusted = (BigInt(traderBalance) + traderAmountIn) / traderAmountIn;
-            let amountIn = adjusted > 1n ? BigInt(allowance) / adjusted : allowance;
-            let leverage = traderSizeDelta / traderAmountIn;
-            decodedInput[0] = path;
-            decodedInput[2] = String(amountIn);
-            decodedInput[4] = String(BigInt(amountIn) * leverage);
-            decodedInput[6] = "0";
+            let adjusted = (Number(traderBalance) + Number(traderAmountIn)) / traderAmountIn;
+            let amountIn = allowance / adjusted;
+            let leverage = web3.utils.toBN(traderSizeDelta).div(web3.utils.toBN(traderAmountIn));
+            decodedInput[2] = String(Math.floor(amountIn));
+            decodedInput[4] = String(web3.utils.toBN(Math.floor(amountIn)).mul(leverage));
+            if (long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
+            else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
             decodedInput[7] = minExecutionFee;
-            console.log(decodedInput)
+            console.log("User input: ", decodedInput);
             if (amountIn > 0) {
                 const input = [];
                 for(let i = 0; i < 10; i++) input.push(decodedInput[i]);
@@ -123,37 +114,28 @@ const repeatTransactions = async (action, users) => {
             }
             else console.log("Error: amountIn == 0");
         }
-        else if (actionType == 1) {
+        else if (actionType === 1) {
             let parameters = ["address[]","address","uint256","uint256","bool","address","uint256","uint256","uint256","bool","address"];
             let decodedInput = web3.eth.abi.decodeParameters(
                 parameters, 
                 input.substring(10, input.length)
             );
-            // temporary
-            const path = [
-                USDT, 
-                WAVAX
-            ]
-            decodedInput[0] = path;
-            let collateralToken = decodedInput[0][0];
             let indexToken = decodedInput[1];
-            let collateralDelta = BigInt(decodedInput[2]);
-            let sizeDelta = BigInt(decodedInput[3]);
-            let isLong = decodedInput[4];
-            // Check the same collateral and index noken as trader did (can mismatch with path)
-            let userPositions = await getPositions(user, [collateralToken], [indexToken], [isLong]);
-            const traderPositions = await getPositions(trader, [collateralToken], [indexToken], [isLong]);
-            if (userPositions > 0n) {
-                const adjusted = (traderPositions + sizeDelta) / userPositions;
-
-                collateralDelta == 0n ? null : decodedInput[2] = String(collateralDelta / adjusted);
-                sizeDelta == 0n ? null : decodedInput[3] = String(sizeDelta / adjusted);
-                
+            let sizeDelta = web3.utils.toBN(decodedInput[3]);
+            let long = decodedInput[4];
+            let response = await getPositions(user, indexToken, indexToken, long);
+            let userPositions = web3.utils.toBN(response[0]);
+            response = await getPositions(trader, indexToken, indexToken, long);
+            let traderPositions = web3.utils.toBN(response[0]);
+            if (String(userPositions) != String('0')) {
+                let adjusted = (traderPositions.add(sizeDelta)).div(sizeDelta);
+                console.log(String(adjusted))
+                decodedInput[3] = String(userPositions.div(adjusted));
                 decodedInput[5] = userAccount;
-                decodedInput[6] = "0"; 
+                if (!long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10))) 
+                else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)));
                 decodedInput[8] = minExecutionFee;
-                console.log(decodedInput);
-
+                console.log("User input: ", decodedInput);
                 const input = [];
                 for(let i = 0; i < 11; i++) input.push(decodedInput[i]);
                 const data = web3.eth.abi.encodeParameters(parameters, input);
@@ -171,40 +153,23 @@ const repeatTransactions = async (action, users) => {
         }
         */
     }
-}
+} 
 
 const getPositions = async (account, collateralTokens, indexTokens, isLong) => {
-    const reader = await new web3.eth.Contract(
-        require("../interfaces/Reader.json"),
-        readerAddress
-    )
-    const response = await reader.methods.getPositions(
-        VAULT, 
-        account,
-        collateralTokens,
-        indexTokens,
-        isLong
+    const vault = await new web3.eth.Contract(
+        VaultAbi,
+        VAULT    
+    );
+    const response = await vault.methods.getPosition(
+        account, collateralTokens, indexTokens, isLong
     ).call();
-    return BigInt(response[0]);
-}
-
-const getContractAbi = async (url) => {
-    const abi = await axios.get(url);
-    return await JSON.parse(abi.data.result);
+    return response;
 }
 
 const init = async () => {
-    // const ARB_URL = `https://api.arbiscan.io/api?module=contract&action=getabi&address=${ARB_USDT}&apikey=${ARB_API_KEY}`;
-    const AVAX_URL = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${USDT}&apikey=${AVAX_API_KEY}`;
-    const routerAbi = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${routerAddress}&apikey=${AVAX_API_KEY}`;
-    const readerAbi = `https://api.snowtrace.io/api?module=contract&action=getabi&address=${readerAddress}&apikey=${AVAX_API_KEY}`;
-    // ERC20ABI = await getContractAbi(AVAX_URL)
+    const db = await funcs.initDataBase();
     PositionRouter = await new web3.eth.Contract(
-        await getContractAbi(routerAbi),
-        routerAddress
-    );
-    Reader = await new web3.eth.Contract(
-        await getContractAbi(readerAbi),
+        RouterAbi,
         routerAddress
     );
     const response = await axios.get(AVAX_API_URL);
@@ -212,45 +177,10 @@ const init = async () => {
     return actions[0];
 }
 
-const increase = {
-    data: {
-        action: "CreateIncreasePosition",
-        account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-        txhash: "0xb81aaf4de4a33b4ac1a03307051860a1b5946e04d8adcfc594a52ae4bc193558"
-    }
-}
-
-const decrease = {
-    data: {
-        action: "CreateDecreasePosition",
-        account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
-        txhash: "0x62bd19760cf8b09620aae6edca94b902890dd53bf13d9c21bcc8871d379d3276"
-    }
-}
-
-const func = async () => {
-    await init();
-    await exploreNewActions([decrease]);
-}
-
-func();
-
-const getETHBalanceByAPI = async (address) => {
-    const api = `https://api.arbiscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=${API_KEY}`;
-    const response = await axios.get(api);
-    return response.result;
-}
-
 const getBalance = async (user, tokenAddress) => {
     const token = await new web3.eth.Contract(ERC20ABI, tokenAddress);
     const balance = await token.methods.balanceOf(user).call();
     return balance;
-}
-
-const getUserByAccountAddress = async (userAccount) => {
-    const userContract = await new web3.eth.Contract(UserAccountAbi, userAccount);
-    const user = await userContract.methods.USER().call();
-    return user;
 }
 
 const getAllowance = async (userAccount, user, tokenAddress) => {
@@ -264,16 +194,19 @@ const getGasPrice = async () => {
 }
 
 const getTrackingUsers = async (trader) => {
-    if (DataBase[trader.toLowerCase()]) return DataBase[trader.toLowerCase()];
-    else return [];
+    const users = await funcs.getUsersByTrader(trader);
+    return users[0];
 }
 
 const exploreNewActions = async (actions) => {
     actions.map(async (action) => {
         if (trackedActions.includes(action.data.action)) {
+            console.log("Account: ", action.data.account);
             let users = await getTrackingUsers(action.data.account);
             console.log("Users: ", users);
-            if (users.length > 0) await repeatTransactions(action, users);
+            if (users) if (users.length > 0) {
+                await repeatTransactions(action, users);
+            }
         }
     })
 }
@@ -285,18 +218,39 @@ const main = async () => {
     let latestAction = await init();
     console.log(latestAction.id);
     console.log("Initialization completed");
-    while(true) {
-        newActions = [];
-        response = await axios.get(AVAX_API_URL);
-        actions = response.data;
-        if (latestAction) {
-            for(let i = 0; i < actions.lenth || latestAction.id != actions[i].id; i++) {
-                newActions.push(actions[i]);
-            }
-            latestAction = actions[0];
+    /*
+    const increase = {
+        data: {
+            action: "CreateIncreasePosition",
+            account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
+            txhash: "0xf51c6dfa10b4abc98c071ff253a9d7795adaf7f73f452be879580647ee666d79"
         }
-        await exploreNewActions(newActions);
+    }
+    const decrease = {
+        data: {
+            action: "CreateDecreasePosition",
+            account: "0x8d3646cCB2B0D55af97C837aAb418c1b3e03fC2a",
+            txhash: "0x1870c8b92449827e9d7e69f0a1f6fff98b11d5d64187b751ca5404291a423efd"
+        }
+    }
+    await exploreNewActions([increase]);
+    */
+    
+    while(true) {
+        try {
+            newActions = [];
+            response = await axios.get(AVAX_API_URL);
+            actions = response.data;
+            if (latestAction && actions) {
+                for(let i = 0; i < actions.lenth || latestAction.id != actions[i].id; i++) {
+                    newActions.push(actions[i]);
+                }
+                latestAction = actions[0];
+            }
+            if (newActions.length > 0) await exploreNewActions(newActions);
+        }
+        catch (err) { console.log(err); }
     }
 }
 
-// main();
+main();
