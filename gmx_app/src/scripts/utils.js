@@ -7,7 +7,8 @@ const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
 
 // Avalanche 
 const decimals = 10**6;
-const MANAGER = "0x9CD3e68Db82cE54D240Aad37760a1396600ebe0B";
+const feeToOperatePositions = "70000000000000000";
+const MANAGER = "0x3614890d8b568482877cc0cde001257844987fad";
 
 const createUserAccount = async (user) => {
     const calldata = await web3.eth.abi.encodeFunctionCall({
@@ -48,6 +49,7 @@ const getUserAccount = async (user) => {
 const approve = async (user, token, amount) => {
     const userAccount = await getUserAccount(user);
     if (userAccount != zeroAddress && amount > 0) {
+        /*
         const calldata = await web3.eth.abi.encodeFunctionCall({
             "constant": false,
             "inputs": [
@@ -68,6 +70,37 @@ const approve = async (user, token, amount) => {
                 }
             ],
             "payable": false,
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, [userAccount, amount * decimals]);
+        const transaction = {
+            'from': user,
+            'to': token,
+            'value': web3.utils.toHex(feeToOperatePositions),
+            'data': calldata
+        }
+        */
+        const calldata = await web3.eth.abi.encodeFunctionCall({
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "spender",
+                    "type": "address"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "amount",
+                    "type": "uint256"
+                }
+            ],
+            "name": "approve",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
             "stateMutability": "nonpayable",
             "type": "function"
         }, [userAccount, amount * decimals]);
