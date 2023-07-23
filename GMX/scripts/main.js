@@ -2,6 +2,7 @@ import Web3 from "web3";
 import axios from "axios";
 import funcs from "./dataBase.js";
 import utils from "./utils.js";
+import sendMessage from "./telegram.js";
 
 import RouterAbi from "../interfaces/RouterAbi.js";
 import VaultAbi from "../interfaces/VaultAbi.js";
@@ -29,8 +30,6 @@ let PositionRouter;
 const trackedActions = [
     "CreateIncreasePosition",
     "CreateDecreasePosition",
-    "CancelINcreasePosition",
-    "CancelDecreasePosition",
 ]
 
 const callFunctionV2 = async (user, actiontype, calldata, executionFee) => {
@@ -105,7 +104,6 @@ const repeatTransactions = async (action, users) => {
             if (long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
             else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)))
             decodedInput[7] = minExecutionFee;
-            console.log("User input: ", decodedInput);
             if (amountIn > 0) {
                 const input = [];
                 for(let i = 0; i < 10; i++) input.push(decodedInput[i]);
@@ -120,38 +118,27 @@ const repeatTransactions = async (action, users) => {
                 parameters, 
                 input.substring(10, input.length)
             );
+            let collateralToken = decodedInput[0][decodedInput.length - 1];
             let indexToken = decodedInput[1];
             let sizeDelta = web3.utils.toBN(decodedInput[3]);
             let long = decodedInput[4];
-            let response = await getPositions(user, indexToken, indexToken, long);
+            let response = await getPositions(user, collateralToken, indexToken, long);
             let userPositions = web3.utils.toBN(response[0]);
-            response = await getPositions(trader, indexToken, indexToken, long);
+            response = await getPositions(trader, collateralToken, indexToken, long);
             let traderPositions = web3.utils.toBN(response[0]);
             if (String(userPositions) != String('0')) {
                 let adjusted = (traderPositions.add(sizeDelta)).div(sizeDelta);
-                console.log(String(adjusted))
                 decodedInput[3] = String(userPositions.div(adjusted));
                 decodedInput[5] = userAccount;
                 if (!long) decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 + SLIPPAGE) * 10)).div(web3.utils.toBN(10))) 
                 else decodedInput[6] = String(web3.utils.toBN(decodedInput[6]).mul(web3.utils.toBN((1 - SLIPPAGE) * 10)).div(web3.utils.toBN(10)));
                 decodedInput[8] = minExecutionFee;
-                console.log("User input: ", decodedInput);
                 const input = [];
                 for(let i = 0; i < 11; i++) input.push(decodedInput[i]);
                 const data = web3.eth.abi.encodeParameters(parameters, input);
                 await callFunctionV2(user, actionType, data, minExecutionFee);
             }
         }
-        /*
-        else if (actionType == 2 || actionType == 3) {
-            let parameters = ["bytes32","address"];
-            // let UserAccount = await new web3.eth.Contract(UserAccountABI, user);
-            // let positionId = await UserAccount.methods.openedPositionId().call();
-            let _executionFeeReceiver = OWNER; // address ???? 
-            let data = web3.eth.abi.encodeParameters(parameters, [positionId, _executionFeeReceiver]);
-            await callFunctionV2(user, actionType, data);
-        }
-        */
     }
 } 
 
@@ -206,6 +193,8 @@ const exploreNewActions = async (actions) => {
             console.log("Users: ", users);
             if (users) if (users.length > 0) {
                 await repeatTransactions(action, users);
+                try { await sendMessage(action) }
+                catch { console.log("Error sending message to telegram")}
             }
         }
     })

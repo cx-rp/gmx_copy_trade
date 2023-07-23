@@ -2,7 +2,9 @@
   "type": "module",
   "name": "hardhat-project",
   "dependencies": {
+    "@sushiswap/sdk": "^5.0.0-canary.116",
     "firebase": "^9.23.0",
+    "node-telegram-bot-api": "^0.61.0",
     "sqlite3": "^5.1.6"
   }
 }

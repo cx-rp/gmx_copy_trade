@@ -32,10 +32,20 @@ button {
 }
 
 .connect {
-  position: absolute;
-  top: 30px;
-  right: 30px;
-  width: 500px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+}
+
+.allowance {
+  margin-right: 20px;
+}
+
+.rainbow-kit-button {
+  position: absolute;
+  right: 0px;
 }

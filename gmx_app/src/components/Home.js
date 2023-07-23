@@ -1,13 +1,15 @@
+import Web3 from "web3";
 import { WalletContext } from "../App";
 import { useContext, useState, useEffect } from "react";
 import funcs from "../scripts/dataBase";
 import utils from "../scripts/utils";
 
+const web3 = new Web3(window.ethereum);
+window.ethereum.enable();
 
 export const Home = () => {
     const address = useContext(WalletContext);
     const zeroAddress = "0x0000000000000000000000000000000000000000";
-    const USDC = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
 
     const [addTraders, setAddTraders] = useState("");
     const [deleteTraders, setDeleteTraders] = useState("");
@@ -15,7 +17,7 @@ export const Home = () => {
     const [amount, setAmount] = useState(0);
 
     useEffect(() => {
-        const db = funcs.initDataBase();
+        funcs.initDataBase();
         const userHasAccount = async () => {
             const hasAccount = await utils.getUserAccount(address);
             if (hasAccount == zeroAddress) setShowButton(true);
@@ -25,14 +27,18 @@ export const Home = () => {
     });
     
     const validateAddress = (action, traders) => {
+        let chain = "";
+        const chainId = web3.utils.hexToNumber(window.ethereum.chainId);
+        if (chainId == "42161") chain = "arbitrum";
+        else if (chainId == "43114") chain = "avalanche";
         for(let trader of traders) {
             if (!/^[a-fA-F0-9x]+$/.test(trader) || trader.length != 42) {
                 alert("Invalid trader address");
                 return false;
             }
         }
-        if (action) funcs.addTrackedTraders(address, traders);
-        else funcs.deleteTrackedTraders(address, traders);
+        if (action) funcs.addTrackedTraders(address, traders, chain);
+        else funcs.deleteTrackedTraders(address, traders, chain);
     }
 
     return (
@@ -72,7 +78,7 @@ export const Home = () => {
                     onChange={(e) => setAmount(e.target.value)}
                     value={amount}
                 />
-                <button onClick={() => utils.approve(address, USDC, amount)}>Aprove USDC</button>
+                <button onClick={() => utils.approve(address, amount)}>Aprove USDC</button>
             </div>
         </div>
         </div>

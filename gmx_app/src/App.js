@@ -11,8 +11,8 @@ import { arbitrum } from 'wagmi/chains';
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { jsonRpcProvider } from 'wagmi/providers/jsonRpc';
 
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { useState, useContext, createContext } from "react";
+import { useAccount } from 'wagmi';
+import { createContext } from "react";
 
 const avalancheChain = {
   id: 43_114,
@@ -49,7 +49,7 @@ const { chains, publicClient } = configureChains(
 
 const { connectors } = getDefaultWallets({
   appName: 'My RainbowKit App',
-  projectId: 'YOUR_PROJECT_ID',
+  projectId: 'ee6ee26fbfb5a4ae91cfcad3ebf932b7',
   chains
 });
 

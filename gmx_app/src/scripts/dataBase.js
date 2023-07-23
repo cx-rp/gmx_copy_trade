@@ -21,9 +21,9 @@ const initDataBase = () => {
     return db;
 }
 
-const getUsersByTrader = async (trader) => {
+const getUsersByTrader = async (trader, chain) => {
     const dbRef = ref(getDatabase());
-    const snapshot = await get(child(dbRef, 'traders/' + trader));
+    const snapshot = await get(child(dbRef, `${chain}/traders/` + trader));
     if (snapshot.exists()) {
         const response = snapshot.val();
         const users = Object.keys(response).map((key) => {
@@ -37,18 +37,19 @@ const getUsersByTrader = async (trader) => {
     }
 }
 
-const addTrackedTraders = async (user, traders) => {
+const addTrackedTraders = async (user, traders, chain) => {
     for(let trader of traders) {
-        const users = await getUsersByTrader(trader);
+        const users = await getUsersByTrader(trader, chain);
         console.log("Users", users);
-        if (users.length > 0) {
+        if (users[0].length > 0) {
             if (users[0].includes(user)) {
                 alert(`Trader ${trader} already tracked by user ${user}`);
             }
             else {
                 let _users = users[0];
                 _users.push(user);
-                set(ref(DB, "traders/" + trader), {
+                console.log("-------", _users)
+                set(ref(DB, `${chain}/traders/` + trader), {
                     _users
                 });
                 alert(`New users: ${users[0]}`);
@@ -58,7 +59,7 @@ const addTrackedTraders = async (user, traders) => {
             console.log(user)   
             let _users = [user];
             console.log("users ", _users)
-            set(ref(DB, "traders/" + trader), {
+            set(ref(DB, `${chain}/traders/` + trader), {
                 _users
             });
             alert(`New trader: ${trader}`);
@@ -66,14 +67,14 @@ const addTrackedTraders = async (user, traders) => {
     }
 }
 
-const deleteTrackedTraders = async (user, traders) => {
+const deleteTrackedTraders = async (user, traders, chain) => {
     for(let trader of traders) {
-        const users = await getUsersByTrader(trader);
+        const users = await getUsersByTrader(trader, chain);
         if (users[0].includes(user)) {
             const index = users[0].indexOf(user);
             if (index > -1) users[0].splice(index, 1);
             let _users = users[0];
-            set(ref(DB, "traders/" + trader), {
+            set(ref(DB, `${chain}/traders/` + trader), {
                 _users
             });
             alert(`Deleted trader: ${trader}`);

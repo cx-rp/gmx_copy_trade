@@ -14,9 +14,12 @@ interface IGMXRouter {
 }
 
 interface IManager {
-    function chargeFee(address token) external;
-    function INCREASE_POSIOTION_FEE() external returns(uint24);
+    function FEE() external returns(uint256);
+    function OWNER() external returns(address);
+    function chargeFee(address tokenIn) external;
+    function FEE_RECIPIENT() external returns(address);
     function userAccounts(address user) external returns(address);
+    function getIncreasePositionFee(address tokenIn) external returns(uint256);
 }
 
 interface IPositionRouter {
@@ -45,48 +48,32 @@ interface IPositionRouter {
         bool _withdrawETH,
         address _callbackTarget
     ) external payable returns (bytes32);
-    function cancelIncreasePosition(
-        bytes32 _key, 
-        address payable _executionFeeReceiver
-    ) external returns (bool);
-    function cancelDecreasePosition(
-        bytes32 _key, 
-        address payable _executionFeeReceiver
-    ) external returns (bool);
 }
 
 contract UserAccount {
-    address public immutable OWNER;
-    address public immutable MANAGER;
+    address public immutable USER;
     address public immutable GMX_ROUTER;
     address public immutable GMX_POSITION_ROUTER;
     uint8 public immutable CREATE_INCREASE_POSITION = 0;
     uint8 public immutable CREATE_DECREASE_POSITION = 1;
-    uint8 public immutable CANCEL_INCREASE_POSITION = 2;
-    uint8 public immutable CANCEL_DECREASE_POSITION = 3;
-
-    modifier userRestrict {
-        IManager manager = IManager(MANAGER);
-        address userAccount = manager.userAccounts(msg.sender);
-        require(userAccount == address(this), "Incorrect caller address: Not a USER");
-        _;
-    }
+    
+    IManager private manager;
 
     constructor(
-        address _OWNER,
+        address _USER,
         address _GMX_ROUTER,
-        address _GMX_POSITION_ROUTER 
+        address _GMX_POSITION_ROUTER
     ) {
-        OWNER = _OWNER;
-        MANAGER = msg.sender;
+        USER = _USER;
         GMX_ROUTER = _GMX_ROUTER;
         GMX_POSITION_ROUTER = _GMX_POSITION_ROUTER;
         IGMXRouter router = IGMXRouter(GMX_ROUTER);
         router.approvePlugin(GMX_POSITION_ROUTER);
+        manager = IManager(msg.sender);
     }
 
-    function executeAction(uint8 action, bytes calldata data) external returns(bytes32) {
-        require(OWNER == msg.sender, "Incorrect caller address: Not an OWNER");
+    function executeAction(uint8 action, bytes calldata data) external payable {
+        require(manager.OWNER() == msg.sender, "Incorrect caller address: Not an OWNER");
         IPositionRouter positionPouter = IPositionRouter(GMX_POSITION_ROUTER);
         if (action == CREATE_INCREASE_POSITION) {
             (
@@ -113,25 +100,35 @@ contract UserAccount {
                 address
             ));
             IERC20 token = IERC20(_path[0]);
-            require(_amountIn >= token.balanceOf(address(this)), "Insufficient _amountIn");
-            IManager manager = IManager(MANAGER);
-            uint256 _amountInAdjusted = calculateAmountInAdjusted(_amountIn);
-            token.transfer(MANAGER, _amountIn - _amountInAdjusted);
-            token.approve(GMX_ROUTER, _amountInAdjusted);
-            bytes32 openedPositionId = positionPouter.createIncreasePosition(
-                _path, 
-                _indexToken, 
-                _amountInAdjusted, 
+            require(_amountIn <= token.allowance(
+                USER, 
+                address(this)
+            ), "Insufficient _amountIn");
+            uint256 _amountInAdj;
+            uint256 _sizeDeltaAdj;
+            {
+                token.transferFrom(USER, address(this), _amountIn);
+                uint256 increaseFee = manager.getIncreasePositionFee(address(token));
+                uint256 fee = _amountIn / manager.FEE();
+                token.transfer(address(manager), increaseFee);
+                token.transfer(manager.FEE_RECIPIENT(), fee);
+                _amountInAdj = _amountIn - fee - increaseFee;
+                _sizeDeltaAdj = _sizeDelta / _amountIn * _amountInAdj;
+            }
+            token.approve(GMX_ROUTER, _amountInAdj);
+            positionPouter.createIncreasePosition{value: msg.value}(
+                _path,
+                _indexToken,
+                _amountInAdj, 
                 _minOut, 
-                _sizeDelta, 
+                _sizeDeltaAdj, 
                 _isLong, 
                 _acceptablePrice, 
-                _executionFee, 
+                _executionFee,
                 _referralCode, 
                 _callbackTarget
             );
-            manager.chargeFee(_path[0]);
-            return openedPositionId;
+            manager.chargeFee(address(token));
         }
         else if (action == CREATE_DECREASE_POSITION) {
             (
@@ -159,7 +156,7 @@ contract UserAccount {
                 bool, 
                 address
             ));
-            bytes32 openedPositionId = positionPouter.createDecreasePosition(
+            positionPouter.createDecreasePosition{value: msg.value}(
                 _path,
                 _indexToken,
                 _collateralDelta,
@@ -172,39 +169,11 @@ contract UserAccount {
                 _withdrawETH,
                 _callbackTarget
             );
-            return openedPositionId;
-        }
-        else if (action == CANCEL_INCREASE_POSITION) {
-            (
-                bytes32 _key, 
-                address payable _executionFeeReceiver
-            ) = abi.decode(data, (bytes32, address));
-            bool closed = positionPouter.cancelIncreasePosition(_key, _executionFeeReceiver);
-            if (closed) return bytes32("0x");
-        }
-        else if (action == CANCEL_DECREASE_POSITION) {
-            (
-                bytes32 _key, 
-                address payable _executionFeeReceiver
-            ) = abi.decode(data, (bytes32, address));
-            bool closed = positionPouter.cancelDecreasePosition(_key, _executionFeeReceiver);
-            if (closed) return bytes32("0x");
         }
     }
 
-    function calculateAmountInAdjusted(uint256 _amountIn) internal returns(uint256) {
-        IManager manager = IManager(MANAGER);
-        uint24 fee = manager.INCREASE_POSIOTION_FEE();
-        uint256 amountInAdjusted = _amountIn - _amountIn / fee;
-        return amountInAdjusted;
-    }
-
-    function withdrawTokens(address tokenAddress, uint256 amount) external userRestrict {
-        IERC20 token = IERC20(tokenAddress);
-        token.transfer(msg.sender, amount);
-    }
-
-    function deleteContract() external userRestrict {
-        selfdestruct(payable(OWNER));
+    function withdraw(address tokenAddress) external {
+        require(USER == msg.sender, "Incorrect caller address: not a USER");
+        IERC20(tokenAddress).transfer(msg.sender, IERC20(tokenAddress).balanceOf(address(this)));
     }
 }

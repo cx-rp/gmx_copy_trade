@@ -1,17 +1,15 @@
 import Web3 from "web3";
 import ManagerAbi from "../interfaces/ManagerAbi";
 import { zeroAddress } from "viem";
+import networks from "./networks";
+import ierc20 from "../interfaces/IERC20";
 
-const HttpProviderAvalanche = "https://api.avax.network/ext/bc/C/rpc";
-const web3 = new Web3(new Web3.providers.HttpProvider(HttpProviderAvalanche));
-
-// Avalanche 
-const decimals = 10**6;
-const feeToOperatePositions = "70000000000000000";
-const MANAGER = "0x3614890d8b568482877cc0cde001257844987fad";
+const web3 = new Web3(window.ethereum);
+window.ethereum.enable();
 
 const createUserAccount = async (user) => {
-    const calldata = await web3.eth.abi.encodeFunctionCall({
+    const chainId = web3.utils.hexToNumber(window.ethereum.chainId);
+    const calldata = web3.eth.abi.encodeFunctionCall({
         "inputs": [],
 		"name": "createNewUserAccount",
 		"outputs": [
@@ -26,7 +24,7 @@ const createUserAccount = async (user) => {
     }, []);
     const transaction = {
         'from': user,
-        'to': MANAGER,
+        'to': networks[chainId].manager,
         'value': "0x00",
         'data': calldata
     }
@@ -37,50 +35,23 @@ const createUserAccount = async (user) => {
 }
 
 const getUserAccount = async (user) => {
+    const chainId = web3.utils.hexToNumber(window.ethereum.chainId);
     if (user) {
-        const manager = await new web3.eth.Contract(
+        const manager = new web3.eth.Contract(
             ManagerAbi,
-            MANAGER
+            networks[chainId].manager
         );
         return await manager.methods.userAccounts(user).call();
     }
 }
 
-const approve = async (user, token, amount) => {
+const approve = async (user, amount) => {
+    const chainId = web3.utils.hexToNumber(window.ethereum.chainId);
     const userAccount = await getUserAccount(user);
+    const erc20 = new web3.eth.Contract(ierc20, networks[chainId].usdc);
+    const decimals = await erc20.methods.decimals().call();
     if (userAccount != zeroAddress && amount > 0) {
-        /*
-        const calldata = await web3.eth.abi.encodeFunctionCall({
-            "constant": false,
-            "inputs": [
-                {
-                    "name": "_spender",
-                    "type": "address"
-                },
-                {
-                    "name": "_value",
-                    "type": "uint256"
-                }
-            ],
-            "name": "approve",
-            "outputs": [
-                {
-                    "name": "",
-                    "type": "bool"
-                }
-            ],
-            "payable": false,
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }, [userAccount, amount * decimals]);
-        const transaction = {
-            'from': user,
-            'to': token,
-            'value': web3.utils.toHex(feeToOperatePositions),
-            'data': calldata
-        }
-        */
-        const calldata = await web3.eth.abi.encodeFunctionCall({
+        const calldata = web3.eth.abi.encodeFunctionCall({
             "inputs": [
                 {
                     "internalType": "address",
@@ -106,7 +77,7 @@ const approve = async (user, token, amount) => {
         }, [userAccount, amount * decimals]);
         const transaction = {
             'from': user,
-            'to': token,
+            'to': networks[chainId].usdc,
             'value': "0x00",
             'data': calldata
         }
@@ -119,8 +90,8 @@ const approve = async (user, token, amount) => {
 }
 
 const withdraw = async (user) => {
+    const chainId = web3.utils.hexToNumber(window.ethereum.chainId);
     const userAccount = await getUserAccount(user);
-    const USDC = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
     const calldata = await web3.eth.abi.encodeFunctionCall({
         "inputs": [
 			{
@@ -133,7 +104,7 @@ const withdraw = async (user) => {
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
-    }, [USDC]);
+    }, [networks[chainId].usdc]);
     const transaction = {
         'from': user,
         'to': userAccount,
