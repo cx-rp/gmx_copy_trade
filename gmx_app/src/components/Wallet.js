@@ -40,8 +40,7 @@ export const Wallet = () => {
             if (hasAccount == zeroAddress) setAllowance("User don't have an account")
             else getAmountApproved();
         }
-        getAmountApproved();
-        
+        userHasAccount();
     }, [address])
     
     return (
